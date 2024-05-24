@@ -1,5 +1,5 @@
 # `scoped-thread-local`
-[Documentation](https://docs.rs/scoped-tls-hkt)
+[Documentation](https://docs.rs/scoped_thread_local)
 
 Flexible version of thread local
 
