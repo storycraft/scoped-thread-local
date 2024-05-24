@@ -1,4 +1,3 @@
-pub use reborrow;
 pub use scopeguard;
 
 pub const EMPTY_MESSAGE: &str = "empty";

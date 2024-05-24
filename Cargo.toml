@@ -9,5 +9,4 @@ edition = "2021"
 repository = "https://github.com/storycraft/scoped-thread-local"
 
 [dependencies]
-reborrow = "0.5.5"
 scopeguard = "1.2.0"
