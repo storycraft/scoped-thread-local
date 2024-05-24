@@ -26,13 +26,13 @@ macro_rules! generate {
 
             impl $name {
                 /// Take value and insert into this scoped thread local storage slot for a duration of a closure.
-                /// 
+                ///
                 /// Upon return, this function will restore the previous value and return the taken value.
                 pub fn set<$($lt),*>(&self, value: $hkt_ty, f: impl FnOnce()) -> $hkt_ty {
-                    // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
-                    let slot = ::core::cell::Cell::new(Some(unsafe { ::core::mem::transmute(value) }));
-
                     INNER.with(|inner| {
+                        // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
+                        let slot = ::core::cell::Cell::new(Some(unsafe { ::core::mem::transmute(value) }));
+
                         inner.swap(&slot);
                         {
                             $crate::__private::scopeguard::defer! {
@@ -49,7 +49,7 @@ macro_rules! generate {
 
                 /// Temporary takes out value and obtain a mutable reference value.
                 /// This function takes a closure which receives the value of this variable.
-                /// 
+                ///
                 /// # Panics
                 /// Panics if set has not previously been called or value is already taken out by parent scope.
                 pub fn with<R>(self, f: impl for<$($lt),*> FnOnce(&mut $hkt_ty) -> R) -> R {
