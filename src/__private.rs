@@ -4,14 +4,6 @@ pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! into_tt {
-    ($($tt:tt)*) => {
-        $($tt)*
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
 macro_rules! generate {
     (
         $(#[$meta:meta])*
