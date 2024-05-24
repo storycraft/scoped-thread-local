@@ -1,6 +1,6 @@
 pub use scopeguard;
 
-pub const EMPTY_MESSAGE: &str = "empty";
+pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
 #[macro_export]
 #[doc(hidden)]
