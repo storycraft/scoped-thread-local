@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "scoped_thread_local"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "scopeguard",
 ]
