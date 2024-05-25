@@ -1,6 +1,6 @@
 [package]
 name = "scoped_thread_local"
-version = "0.1.3"
+version = "0.1.4"
 description = "Highly flexible Scoped thread local with HKT builtin"
 keywords = ["scoped-tls", "scoped-thread-local", "macro", "hkt"]
 authors = ["storycraft <storycraft@pancake.sh>"]
@@ -9,3 +9,7 @@ edition = "2021"
 repository = "https://github.com/storycraft/scoped-thread-local"
 
 [dependencies]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

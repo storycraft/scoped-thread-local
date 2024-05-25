@@ -1,23 +1,18 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
+//! ## Example
+//! See `example` module for expanded code
+//! ```rust
+#![doc = include_str!("./example.rs")]
+//! ```
 
 #[doc(hidden)]
 pub mod __private;
 
+/// Expanded example code
 #[cfg(doc)]
-pub mod example {
-    //! Usage example for scoped thread local
-
-    /// Container type for scoped thread local variable
-    pub struct Container<'a, 'b> {
-        pub a: &'a mut i32,
-        pub b: &'b i32,
-    }
-
-    crate::scoped_thread_local!(
-        /// Generated scoped thread local variable
-        pub static EXAMPLE: for<'a> Container<'a, '_>
-    );
-}
+#[cfg_attr(docsrs, doc(cfg(feature = "example")))]
+pub mod example;
 
 #[macro_export]
 /// Create scoped thread local
