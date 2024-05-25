@@ -9,4 +9,3 @@ edition = "2021"
 repository = "https://github.com/storycraft/scoped-thread-local"
 
 [dependencies]
-scopeguard = "1.2.0"

@@ -1,4 +1,4 @@
-use std::{cell::Cell, thread::LocalKey};
+use core::cell::Cell;
 
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
@@ -48,13 +48,25 @@ macro_rules! generate {
                 /// Panics if set has not previously been called or value is already taken out by parent scope.
                 #[inline(always)]
                 pub fn with<R>(self, f: impl for<$($lt),*> FnOnce(&mut $hkt_ty) -> R) -> R {
-                    $crate::__private::with_key(&INNER, |opt| f(opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)))
+                    INNER.with(|cell| {
+                        $crate::__private::with_key(
+                            cell,
+                            |opt| f(
+                                opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
+                            )
+                        )
+                    })
                 }
 
                 /// Test whether this TLS key has been set for the current thread.
                 #[inline(always)]
                 pub fn is_set(self) -> bool {
-                    $crate::__private::with_key(&INNER, |opt| opt.is_some())
+                    INNER.with(|cell| {
+                        $crate::__private::with_key(
+                            cell,
+                            |opt| opt.is_some()
+                        )
+                    })
                 }
             }
         };
@@ -62,19 +74,40 @@ macro_rules! generate {
 }
 
 pub fn with_swapped<T>(cell1: &Cell<T>, cell2: &Cell<T>, f: impl FnOnce()) {
+    struct Guard<'a, T> {
+        cell1: &'a Cell<T>,
+        cell2: &'a Cell<T>,
+    }
+
+    impl<T> Drop for Guard<'_, T> {
+        fn drop(&mut self) {
+            self.cell1.swap(self.cell2);
+        }
+    }
+
     cell1.swap(cell2);
-    scopeguard::defer! {
-        cell1.swap(cell2);
-    };
+    let _guard = Guard { cell1, cell2 };
 
     f()
 }
 
-pub fn with_key<T, R>(
-    key: &'static LocalKey<Cell<Option<T>>>,
-    f: impl FnOnce(&mut Option<T>) -> R,
-) -> R {
-    key.with(|inner| f(&mut scopeguard::guard(inner.take(), |opt| inner.set(opt))))
+pub fn with_key<T, R>(cell: &Cell<Option<T>>, f: impl FnOnce(&mut Option<T>) -> R) -> R {
+    struct Guard<'a, T> {
+        cell: &'a Cell<Option<T>>,
+        value: Option<T>,
+    }
+
+    impl<T> Drop for Guard<'_, T> {
+        fn drop(&mut self) {
+            self.cell.set(self.value.take());
+        }
+    }
+
+    f(&mut Guard {
+        cell,
+        value: cell.take(),
+    }
+    .value)
 }
 
 #[macro_export]
