@@ -66,12 +66,10 @@ macro_rules! generate {
                 /// Test whether this TLS key has been set for the current thread.
                 pub fn is_set(self) -> bool {
                     INNER.with(|inner| {
-                        let mut opt = $crate::__private::scopeguard::guard(
+                        $crate::__private::scopeguard::guard(
                             inner.take(),
                             |opt| inner.set(opt),
-                        );
-
-                        opt.is_some()
+                        ).is_some()
                     })
                 }
             }
