@@ -132,7 +132,7 @@ macro_rules! staticify {
     ) => {
         $crate::staticify!(
             [input: $($in)*]
-            [output: &'static $($out)*]
+            [output: $($out)* &'static]
         )
     };
 
@@ -143,13 +143,13 @@ macro_rules! staticify {
     ) => {
         $crate::staticify!(
             [input: $($in)*]
-            [output: &'static $($out)*]
+            [output: $($out)* &'static]
         )
     };
 
     // Handle paren
     (
-        [input: ( $($in_paren:tt)+ ) $($in_rest:tt)*]
+        [input: ( $($in_paren:tt)* ) $($in_rest:tt)*]
         [output: $($out:tt)*]
     ) => {
         $crate::staticify!(
@@ -163,7 +163,7 @@ macro_rules! staticify {
 
     // Handle bracket
     (
-        [input: [ $($in_bracket:tt)+ ] $($in_rest:tt)*]
+        [input: [ $($in_bracket:tt)* ] $($in_rest:tt)*]
         [output: $($out:tt)*]
     ) => {
         $crate::staticify!(
@@ -188,16 +188,8 @@ macro_rules! staticify {
 
     (
         [input: ]
-        [output: $ty:ty]
-    ) => {
-        $ty
-    };
-
-    // Create error if output is not valid
-    (
-        [input: ]
         [output: $($tt:tt)*]
     ) => {
-        ::core::compile_error!(::core::concat!("Expected type, output: ", ::core::stringify!($($tt)*)))
+        $($tt)*
     };
 }
