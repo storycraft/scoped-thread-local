@@ -29,6 +29,7 @@ macro_rules! scoped_thread_local {
             [static_ty: $crate::staticify!(
                 [input: $($ty_tt)*]
                 [output: ]
+                [group: none]
             )]
         );
     };

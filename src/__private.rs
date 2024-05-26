@@ -118,10 +118,12 @@ macro_rules! staticify {
     (
         [input: $in_lt:lifetime $($in:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in)*]
             [output: $($out)* 'static]
+            [group: $group]
         )
     };
 
@@ -129,10 +131,12 @@ macro_rules! staticify {
     (
         [input: & $in_lt:lifetime $($in:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in)*]
             [output: $($out)* &'static]
+            [group: $group]
         )
     };
 
@@ -140,10 +144,12 @@ macro_rules! staticify {
     (
         [input: & $($in:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in)*]
             [output: $($out)* &'static]
+            [group: $group]
         )
     };
 
@@ -151,13 +157,16 @@ macro_rules! staticify {
     (
         [input: ( $($in_paren:tt)* ) $($in_rest:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in_rest)*]
-            [output: $($out)* ( $crate::staticify!(
+            [output: $($out)* $crate::staticify!(
                 [input: $($in_paren)*]
                 [output: ]
-            ) )]
+                [group: paren]
+            )]
+            [group: $group]
         )
     };
 
@@ -165,13 +174,16 @@ macro_rules! staticify {
     (
         [input: [ $($in_bracket:tt)* ] $($in_rest:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in_rest)*]
-            [output: $($out)* [$crate::staticify!(
+            [output: $($out)* $crate::staticify!(
                 [input: $($in_bracket)*]
                 [output: ]
-            )] ]
+                [group: bracket]
+            )]
+            [group: $group]
         )
     };
 
@@ -179,17 +191,36 @@ macro_rules! staticify {
     (
         [input: $in:tt $($in_rest:tt)*]
         [output: $($out:tt)*]
+        [group: $group:ident]
     ) => {
         $crate::staticify!(
             [input: $($in_rest)*]
             [output: $($out)* $in]
+            [group: $group]
         )
     };
 
     (
         [input: ]
         [output: $($tt:tt)*]
+        [group: none]
     ) => {
         $($tt)*
+    };
+
+    (
+        [input: ]
+        [output: $($tt:tt)*]
+        [group: paren]
+    ) => {
+        ($($tt)*)
+    };
+
+    (
+        [input: ]
+        [output: $($tt:tt)*]
+        [group: bracket]
+    ) => {
+        [$($tt)*]
     };
 }
