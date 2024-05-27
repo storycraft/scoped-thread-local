@@ -1,5 +1,7 @@
 use core::cell::Cell;
 
+use elain::{Align, Alignment};
+
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
 #[macro_export]
@@ -10,7 +12,6 @@ macro_rules! generate {
         [vis: $vis:vis]
         [name: $name:ident]
         [hkt_ty: for<$($lt:lifetime),*> $hkt_ty:ty]
-        [static_ty: $static_ty:ty]
     ) => {
         #[allow(non_camel_case_types)]
         #[derive(Clone, Copy)]
@@ -18,10 +19,25 @@ macro_rules! generate {
         $vis struct $name;
 
         const _: () = {
+            const LAYOUT: ::core::alloc::Layout = {
+                const fn get<$($lt),*>() -> ::core::alloc::Layout {
+                    ::core::alloc::Layout::new::<$hkt_ty>()
+                }
+
+                get()
+            };
+
             ::std::thread_local!(
                 static INNER: ::core::cell::Cell<
-                    ::core::option::Option<$static_ty>
-                > = const { ::core::cell::Cell::new(None) }
+                ::core::option::Option<
+                    ::core::mem::MaybeUninit<
+                        $crate::__private::Opaque<
+                            { LAYOUT.size() },
+                            { LAYOUT.align() }
+                        >
+                    >
+                >
+            > = const { ::core::cell::Cell::new(None) }
             );
 
             impl $name {
@@ -51,9 +67,12 @@ macro_rules! generate {
                     INNER.with(|cell| {
                         $crate::__private::with_key(
                             cell,
-                            |opt| f(
-                                opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
-                            )
+                            // SAFETY: opaque type has same layout
+                            |opt| f(unsafe {
+                                ::core::mem::transmute(
+                                    opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
+                                )
+                            })
                         )
                     })
                 }
@@ -110,117 +129,7 @@ pub fn with_key<T, R>(cell: &Cell<Option<T>>, f: impl FnOnce(&mut Option<T>) -> 
     .value)
 }
 
-#[macro_export]
-#[doc(hidden)]
-/// Convert every lifetimes to 'static
-macro_rules! staticify {
-    // Handle 'lt'
-    (
-        [input: $in_lt:lifetime $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* 'static]
-            [group: $group]
-        )
-    };
-
-    // Handle &'lt
-    (
-        [input: & $in_lt:lifetime $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* &'static]
-            [group: $group]
-        )
-    };
-
-    // Handle &
-    (
-        [input: & $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* &'static]
-            [group: $group]
-        )
-    };
-
-    // Handle paren
-    (
-        [input: ( $($in_paren:tt)* ) $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $crate::staticify!(
-                [input: $($in_paren)*]
-                [output: ]
-                [group: paren]
-            )]
-            [group: $group]
-        )
-    };
-
-    // Handle bracket
-    (
-        [input: [ $($in_bracket:tt)* ] $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $crate::staticify!(
-                [input: $($in_bracket)*]
-                [output: ]
-                [group: bracket]
-            )]
-            [group: $group]
-        )
-    };
-
-    // Forward otherwise
-    (
-        [input: $in:tt $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $in]
-            [group: $group]
-        )
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: none]
-    ) => {
-        $($tt)*
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: paren]
-    ) => {
-        ($($tt)*)
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: bracket]
-    ) => {
-        [$($tt)*]
-    };
-}
+#[repr(C)]
+pub struct Opaque<const SIZE: usize, const ALIGN: usize>([u8; SIZE], Align<ALIGN>)
+where
+    Align<ALIGN>: Alignment;

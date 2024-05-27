@@ -9,6 +9,7 @@ edition = "2021"
 repository = "https://github.com/storycraft/scoped-thread-local"
 
 [dependencies]
+elain = "0.3.0"
 
 [package.metadata.docs.rs]
 all-features = true
