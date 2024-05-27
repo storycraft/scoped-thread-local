@@ -17,12 +17,12 @@ macro_rules! generate {
         $vis struct $name;
 
         const _: () = {
-            type Ty<$($lt),*> = <fn(&'static ()) -> $hkt_ty as $crate::__private::Staticifer>::Static;
+            type __Ty<$($lt),*> = <fn(&'static ()) -> $hkt_ty as $crate::__private::Staticifer>::Static;
 
             ::std::thread_local!(
                 static INNER: ::core::cell::Cell<
                     ::core::option::Option<
-                        <fn(&'static ()) -> Ty as $crate::__private::Staticifer>::Static
+                        <fn(&'static ()) -> __Ty as $crate::__private::Staticifer>::Static
                     >
                 > = const { ::core::cell::Cell::new(None) }
             );
