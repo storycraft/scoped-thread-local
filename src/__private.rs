@@ -10,7 +10,6 @@ macro_rules! generate {
         [vis: $vis:vis]
         [name: $name:ident]
         [hkt_ty: for<$($lt:lifetime),*> $hkt_ty:ty]
-        [static_ty: $static_ty:ty]
     ) => {
         #[allow(non_camel_case_types)]
         #[derive(Clone, Copy)]
@@ -18,9 +17,13 @@ macro_rules! generate {
         $vis struct $name;
 
         const _: () = {
+            type Ty<$($lt),*> = <fn(&'static ()) -> $hkt_ty as $crate::__private::Staticifer>::Static;
+
             ::std::thread_local!(
                 static INNER: ::core::cell::Cell<
-                    ::core::option::Option<$static_ty>
+                    ::core::option::Option<
+                        <fn(&'static ()) -> Ty as $crate::__private::Staticifer>::Static
+                    >
                 > = const { ::core::cell::Cell::new(None) }
             );
 
@@ -32,7 +35,9 @@ macro_rules! generate {
                 pub fn set<$($lt),*>(&self, value: $hkt_ty, f: impl FnOnce()) -> $hkt_ty {
                     INNER.with(|inner| {
                         // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
-                        let slot = ::core::cell::Cell::new(Some(unsafe { ::core::mem::transmute(value) }));
+                        let slot = ::core::cell::Cell::new(
+                            ::core::option::Option::Some(unsafe { ::core::mem::transmute(value) })
+                        );
 
                         $crate::__private::with_swapped(inner, &slot, f);
 
@@ -73,6 +78,7 @@ macro_rules! generate {
     };
 }
 
+/// Swap value of two cells for a duration of closure and restore it.
 pub fn with_swapped<T>(cell1: &Cell<T>, cell2: &Cell<T>, f: impl FnOnce()) {
     struct Guard<'a, T> {
         cell1: &'a Cell<T>,
@@ -91,6 +97,7 @@ pub fn with_swapped<T>(cell1: &Cell<T>, cell2: &Cell<T>, f: impl FnOnce()) {
     f()
 }
 
+/// Take value from key and call closure with mutable reference and put it in back.
 pub fn with_key<T, R>(cell: &Cell<Option<T>>, f: impl FnOnce(&mut Option<T>) -> R) -> R {
     struct Guard<'a, T> {
         cell: &'a Cell<Option<T>>,
@@ -110,117 +117,17 @@ pub fn with_key<T, R>(cell: &Cell<Option<T>>, f: impl FnOnce(&mut Option<T>) -> 
     .value)
 }
 
-#[macro_export]
-#[doc(hidden)]
-/// Convert every lifetimes to 'static
-macro_rules! staticify {
-    // Handle 'lt'
-    (
-        [input: $in_lt:lifetime $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* 'static]
-            [group: $group]
-        )
-    };
+mod sealed {
+    pub trait Sealed {}
+}
 
-    // Handle &'lt
-    (
-        [input: & $in_lt:lifetime $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* &'static]
-            [group: $group]
-        )
-    };
+/// Staticify every elided lifetimes
+pub trait Staticifer: sealed::Sealed {
+    type Static;
+}
 
-    // Handle &
-    (
-        [input: & $($in:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in)*]
-            [output: $($out)* &'static]
-            [group: $group]
-        )
-    };
+impl<T> sealed::Sealed for fn(&'static ()) -> T {}
 
-    // Handle paren
-    (
-        [input: ( $($in_paren:tt)* ) $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $crate::staticify!(
-                [input: $($in_paren)*]
-                [output: ]
-                [group: paren]
-            )]
-            [group: $group]
-        )
-    };
-
-    // Handle bracket
-    (
-        [input: [ $($in_bracket:tt)* ] $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $crate::staticify!(
-                [input: $($in_bracket)*]
-                [output: ]
-                [group: bracket]
-            )]
-            [group: $group]
-        )
-    };
-
-    // Forward otherwise
-    (
-        [input: $in:tt $($in_rest:tt)*]
-        [output: $($out:tt)*]
-        [group: $group:ident]
-    ) => {
-        $crate::staticify!(
-            [input: $($in_rest)*]
-            [output: $($out)* $in]
-            [group: $group]
-        )
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: none]
-    ) => {
-        $($tt)*
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: paren]
-    ) => {
-        ($($tt)*)
-    };
-
-    (
-        [input: ]
-        [output: $($tt:tt)*]
-        [group: bracket]
-    ) => {
-        [$($tt)*]
-    };
+impl<T> Staticifer for fn(&'static ()) -> T {
+    type Static = T;
 }

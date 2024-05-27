@@ -17,30 +17,31 @@ pub mod example;
 #[macro_export]
 /// Create scoped thread local
 macro_rules! scoped_thread_local {
+    () => {};
+
     (
         $(#[$meta:meta])*
-        $vis:vis static $name:ident: for<$($lt:lifetime),*> $($ty_tt:tt)*
+        $vis:vis static $name:ident: for<$($lt:lifetime),*> $ty:ty $(; $($rest:tt)*)?
     ) => {
         $crate::generate!(
             $(#[$meta])*
             [vis: $vis]
             [name: $name]
-            [hkt_ty: for<$($lt),*> $($ty_tt)*]
-            [static_ty: $crate::staticify!(
-                [input: $($ty_tt)*]
-                [output: ]
-                [group: none]
-            )]
+            [hkt_ty: for<$($lt),*> $ty]
         );
+
+        $($crate::scoped_thread_local!($($rest)*))?;
     };
 
     (
         $(#[$meta:meta])*
-        $vis:vis static $name:ident: $($ty_tt:tt)*
+        $vis:vis static $name:ident: $ty:ty $(; $($rest:tt)*)?
     ) => {
         $crate::scoped_thread_local!(
             $(#[$meta])*
-            $vis static $name: for<> $($ty_tt)*
+            $vis static $name: for<> $ty
         );
+
+        $($crate::scoped_thread_local!($($rest)*))?;
     };
 }
