@@ -56,12 +56,9 @@ macro_rules! generate {
                     INNER.with(|cell| {
                         $crate::__private::with_key(
                             cell,
-                            // SAFETY: opaque type has same layout
-                            |opt| f(unsafe {
-                                ::core::mem::transmute(
-                                    opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
-                                )
-                            })
+                            |opt| f(
+                                opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
+                            )
                         )
                     })
                 }
