@@ -1,7 +1,5 @@
 use core::cell::Cell;
 
-use elain::{Align, Alignment};
-
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
 #[macro_export]

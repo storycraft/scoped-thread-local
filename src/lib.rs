@@ -23,14 +23,14 @@ macro_rules! scoped_thread_local {
         $(#[$meta:meta])*
         $vis:vis static $name:ident: for<$($lt:lifetime),*> $ty:ty $(; $($rest:tt)*)?
     ) => {
-        $($crate::generate!(
+        $crate::generate!(
             $(#[$meta])*
             [vis: $vis]
             [name: $name]
             [hkt_ty: for<$($lt),*> $ty]
         );
 
-        $($crate::scoped_thread_local!($($rest)*))?;
+        $($crate::scoped_thread_local!($($rest)*);)?
     };
 
     (
@@ -42,6 +42,6 @@ macro_rules! scoped_thread_local {
             $vis static $name: for<> $ty
         );
 
-        $($crate::scoped_thread_local!($($rest)*))?;
+        $($crate::scoped_thread_local!($($rest)*);)?
     };
 }
