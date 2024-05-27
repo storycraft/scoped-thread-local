@@ -1,5 +1,7 @@
 use core::cell::Cell;
 
+use elain::{Align, Alignment};
+
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
 #[macro_export]
@@ -56,9 +58,12 @@ macro_rules! generate {
                     INNER.with(|cell| {
                         $crate::__private::with_key(
                             cell,
-                            |opt| f(
-                                opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
-                            )
+                            // SAFETY: opaque type has same layout
+                            |opt| f(unsafe {
+                                ::core::mem::transmute(
+                                    opt.as_mut().expect($crate::__private::EMPTY_MESSAGE)
+                                )
+                            })
                         )
                     })
                 }
