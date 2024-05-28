@@ -30,7 +30,7 @@ macro_rules! scoped_thread_local {
             [hkt_ty: for<$($lt),*> $ty]
         );
 
-        $($crate::scoped_thread_local!($($rest)*);)?
+        $($crate::scoped_thread_local!($($rest)*))?
     };
 
     (
@@ -42,6 +42,6 @@ macro_rules! scoped_thread_local {
             $vis static $name: for<> $ty
         );
 
-        $($crate::scoped_thread_local!($($rest)*);)?
+        $($crate::scoped_thread_local!($($rest)*))?
     };
 }
