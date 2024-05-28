@@ -30,19 +30,16 @@ macro_rules! generate {
             impl $name {
                 /// Take value and insert into this scoped thread local storage slot for a duration of a closure.
                 ///
-                /// Upon return, this function will restore the previous value and return the taken value.
+                /// Upon return, this function will restore the previous value.
                 #[inline(always)]
-                pub fn set<$($lt),*>(&self, value: $hkt_ty, f: impl FnOnce()) -> $hkt_ty {
+                pub fn set<$($lt),*>(self, value: $hkt_ty, f: impl FnOnce()) {
                     INNER.with(|inner| {
-                        // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
                         let slot = ::core::cell::Cell::new(
-                            ::core::option::Option::Some(unsafe { ::core::mem::transmute(value) })
+                            ::core::option::Option::Some(value)
                         );
 
-                        $crate::__private::with_swapped(inner, &slot, f);
-
-                        // SAFETY: restore lifetimes
-                        unsafe { ::core::mem::transmute(slot.into_inner().unwrap()) }
+                        // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
+                        $crate::__private::with_swapped(inner, unsafe { ::core::mem::transmute(&slot) }, f);
                     })
                 }
 
