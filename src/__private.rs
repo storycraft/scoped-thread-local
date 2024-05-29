@@ -20,11 +20,17 @@ macro_rules! generate {
             type __Ty<$($lt),*> = <fn(&'static ()) -> $hkt_ty as $crate::__private::Staticifer>::Static;
 
             ::std::thread_local!(
-                static INNER: ::core::cell::Cell<
-                    ::core::option::Option<
-                        <fn(&'static ()) -> __Ty as $crate::__private::Staticifer>::Static
+                static INNER: ::core::mem::ManuallyDrop<
+                    ::core::cell::Cell<
+                        ::core::option::Option<
+                            <fn(&'static ()) -> __Ty as $crate::__private::Staticifer>::Static
+                        >
                     >
-                > = const { ::core::cell::Cell::new(None) }
+                > = const {
+                    ::core::mem::ManuallyDrop::new(
+                        ::core::cell::Cell::new(None)
+                    )
+                }
             );
 
             impl $name {
@@ -33,11 +39,11 @@ macro_rules! generate {
                 /// Upon return, this function will restore the previous value.
                 #[inline(always)]
                 pub fn set<$($lt),*>(self, value: $hkt_ty, f: impl FnOnce()) {
-                    INNER.with(|inner| {
-                        let slot = ::core::cell::Cell::new(
-                            ::core::option::Option::Some(value)
-                        );
+                    let slot = ::core::cell::Cell::new(
+                        ::core::option::Option::Some(value)
+                    );
 
+                    INNER.with(|inner| {
                         // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
                         $crate::__private::with_swapped(inner, unsafe { ::core::mem::transmute(&slot) }, f);
                     })
