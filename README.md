@@ -4,7 +4,7 @@
 Flexible version of thread local
 
 Features
-* Lifetime elision in declaration
+* Lifetime elision in declaration (every elided lifetime becomes a distinct one)
 * Full HKT Supports
 
 # License
