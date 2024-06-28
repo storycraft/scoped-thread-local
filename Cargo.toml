@@ -1,6 +1,6 @@
 [package]
 name = "scoped_thread_local"
-version = "0.3.0"
+version = "0.4.0"
 description = "Highly flexible Scoped thread local with HKT builtin"
 keywords = ["scoped-tls", "scoped-thread-local", "macro", "hkt"]
 authors = ["storycraft <storycraft@pancake.sh>"]
