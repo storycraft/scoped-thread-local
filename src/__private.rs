@@ -38,7 +38,10 @@ macro_rules! generate {
                 ///
                 /// Upon return, this function will restore the previous value.
                 #[inline(always)]
-                pub fn set<$($lt),*>(self, value: $hkt_ty, f: impl FnOnce()) {
+                pub fn set<Item>(self, value: Item, f: impl FnOnce()) -> Item
+                where
+                    for<$($lt),*> fn($hkt_ty): FnOnce(Item),
+                {
                     let slot = ::core::cell::Cell::new(
                         ::core::option::Option::Some(value)
                     );
@@ -46,7 +49,9 @@ macro_rules! generate {
                     INNER.with(|inner| {
                         // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
                         $crate::__private::with_swapped(inner, unsafe { ::core::mem::transmute(&slot) }, f);
-                    })
+                    });
+
+                    slot.into_inner().unwrap()
                 }
 
                 /// Temporary takes out value and obtain a mutable reference value.
