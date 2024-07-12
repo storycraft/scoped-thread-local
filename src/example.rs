@@ -1,6 +1,6 @@
 /// Container type for scoped thread local variable
 pub struct Container<'a, 'b> {
-    pub a: &'a mut i32,
+    pub a: &'a i32,
     pub b: &'b i32,
 }
 
@@ -13,8 +13,8 @@ crate::scoped_thread_local!(
 
 fn main() {
     EXAMPLE.set(
-        Container {
-            a: &mut 1,
+        &mut Container {
+            a: &1,
             b: &2,
         },
         || {
