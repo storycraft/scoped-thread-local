@@ -1,4 +1,7 @@
-use core::cell::Cell;
+use core::{
+    cell::Cell,
+    mem::{self, ManuallyDrop, MaybeUninit},
+};
 
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
@@ -38,20 +41,16 @@ macro_rules! generate {
                 ///
                 /// Upon return, this function will restore the previous value.
                 #[inline(always)]
-                pub fn set<Item>(self, value: Item, f: impl FnOnce()) -> Item
-                where
-                    for<$($lt),*> fn($hkt_ty): FnOnce(Item),
+                pub fn set<$($lt,)* R>(self, value: &mut $hkt_ty, f: impl FnOnce() -> R) -> R
                 {
-                    let slot = ::core::cell::Cell::new(
-                        ::core::option::Option::Some(value)
-                    );
-
                     INNER.with(|inner| {
                         // SAFETY: extended lifetimes are not exposed and only accessible via higher kinded closure
-                        $crate::__private::with_swapped(inner, unsafe { ::core::mem::transmute(&slot) }, f);
-                    });
-
-                    slot.into_inner().unwrap()
+                        $crate::__private::with_swapped(
+                            inner,
+                            unsafe { ::core::mem::transmute(value) },
+                            f,
+                        )
+                    })
                 }
 
                 /// Temporary takes out value and obtain a mutable reference value.
@@ -86,21 +85,24 @@ macro_rules! generate {
     };
 }
 
-/// Swap value of two cells for a duration of closure and restore it.
-pub fn with_swapped<T>(cell1: &Cell<T>, cell2: &Cell<T>, f: impl FnOnce()) {
+/// Temporary take val for a duration of closure and restore it.
+pub fn with_swapped<T, R>(cell: &Cell<Option<T>>, val: &mut T, f: impl FnOnce() -> R) -> R {
     struct Guard<'a, T> {
-        cell1: &'a Cell<T>,
-        cell2: &'a Cell<T>,
+        cell: &'a Cell<Option<T>>,
+        previous: ManuallyDrop<Cell<Option<T>>>,
     }
 
     impl<T> Drop for Guard<'_, T> {
         fn drop(&mut self) {
-            self.cell1.swap(self.cell2);
+            self.cell.swap(&self.previous);
         }
     }
 
-    cell1.swap(cell2);
-    let _guard = Guard { cell1, cell2 };
+    let val = unsafe { mem::transmute::<_, &mut MaybeUninit<_>>(val) };
+
+    let previous = ManuallyDrop::new(Cell::new(cell.take()));
+    cell.set(Some(unsafe { val.assume_init_read() }));
+    let _guard = Guard { cell, previous };
 
     f()
 }
