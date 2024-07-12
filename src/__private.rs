@@ -1,7 +1,4 @@
-use core::{
-    cell::Cell,
-    mem::{self, ManuallyDrop, MaybeUninit},
-};
+use core::{cell::Cell, mem::ManuallyDrop};
 
 pub const EMPTY_MESSAGE: &str = "expected thread local value, found none";
 
@@ -98,10 +95,8 @@ pub fn with_swapped<T, R>(cell: &Cell<Option<T>>, val: &mut T, f: impl FnOnce() 
         }
     }
 
-    let val = unsafe { mem::transmute::<_, &mut MaybeUninit<_>>(val) };
-
     let previous = ManuallyDrop::new(Cell::new(cell.take()));
-    cell.set(Some(unsafe { val.assume_init_read() }));
+    cell.set(Some(unsafe { (val as *mut T).read() }));
     let _guard = Guard { cell, previous };
 
     f()
