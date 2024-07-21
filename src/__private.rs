@@ -90,19 +90,29 @@ pub fn with_swapped<T, R>(cell: &Cell<Option<T>>, val: &mut T, f: impl FnOnce() 
         previous: ManuallyDrop<Option<T>>,
     }
 
-    impl<T> Drop for Guard<'_, T> {
-        fn drop(&mut self) {
-            *self.val = self.cell.replace(self.previous.take()).unwrap();
+    impl<'a, T> Guard<'a, T> {
+        fn new(cell: &'a Cell<Option<T>>, val: &'a mut T) -> Self {
+            let previous = ManuallyDrop::new(cell.take());
+            // Safety: temporary duplicate val
+            cell.set(Some(unsafe { (val as *mut T).read() }));
+
+            Guard {
+                cell,
+                val,
+                previous,
+            }
         }
     }
 
-    let previous = ManuallyDrop::new(cell.take());
-    cell.set(Some(unsafe { (val as *mut T).read() }));
-    let _guard = Guard {
-        cell,
-        val,
-        previous,
-    };
+    impl<T> Drop for Guard<'_, T> {
+        fn drop(&mut self) {
+            let updated = self.cell.replace(self.previous.take()).unwrap();
+            // Safety: restore temporary duplicated val
+            unsafe { (self.val as *mut T).write(updated) };
+        }
+    }
+
+    let _guard = Guard::new(cell, val);
 
     f()
 }
