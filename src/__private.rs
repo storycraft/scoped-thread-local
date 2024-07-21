@@ -86,18 +86,23 @@ macro_rules! generate {
 pub fn with_swapped<T, R>(cell: &Cell<Option<T>>, val: &mut T, f: impl FnOnce() -> R) -> R {
     struct Guard<'a, T> {
         cell: &'a Cell<Option<T>>,
-        previous: ManuallyDrop<Cell<Option<T>>>,
+        val: &'a mut T,
+        previous: ManuallyDrop<Option<T>>,
     }
 
     impl<T> Drop for Guard<'_, T> {
         fn drop(&mut self) {
-            self.cell.swap(&self.previous);
+            *self.val = self.cell.replace(self.previous.take()).unwrap();
         }
     }
 
-    let previous = ManuallyDrop::new(Cell::new(cell.take()));
+    let previous = ManuallyDrop::new(cell.take());
     cell.set(Some(unsafe { (val as *mut T).read() }));
-    let _guard = Guard { cell, previous };
+    let _guard = Guard {
+        cell,
+        val,
+        previous,
+    };
 
     f()
 }
